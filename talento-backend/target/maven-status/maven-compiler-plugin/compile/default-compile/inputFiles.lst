@@ -1,0 +1,10 @@
+/workspaces/talento-platform/talento-backend/src/main/java/com/talento/service/UserService.java
+/workspaces/talento-platform/talento-backend/src/main/java/com/talento/controller/HealthController.java
+/workspaces/talento-platform/talento-backend/src/main/java/com/talento/exception/GlobalExceptionHandler.java
+/workspaces/talento-platform/talento-backend/src/main/java/com/talento/repository/UserRepository.java
+/workspaces/talento-platform/talento-backend/src/main/java/com/talento/entity/User.java
+/workspaces/talento-platform/talento-backend/src/main/java/com/talento/TalentoApplication.java
+/workspaces/talento-platform/talento-backend/src/main/java/com/talento/controller/AuthController.java
+/workspaces/talento-platform/talento-backend/src/main/java/com/talento/config/SecurityConfig.java
+/workspaces/talento-platform/talento-backend/src/main/java/com/talento/dto/UserDTO.java
+/workspaces/talento-platform/talento-backend/src/main/java/com/talento/exception/ResourceNotFoundException.java

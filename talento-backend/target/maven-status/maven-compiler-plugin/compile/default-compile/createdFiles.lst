@@ -1,0 +1,10 @@
+com/talento/exception/ResourceNotFoundException.class
+com/talento/controller/HealthController.class
+com/talento/repository/UserRepository.class
+com/talento/service/UserService.class
+com/talento/entity/User.class
+com/talento/dto/UserDTO.class
+com/talento/exception/GlobalExceptionHandler.class
+com/talento/TalentoApplication.class
+com/talento/controller/AuthController.class
+com/talento/config/SecurityConfig.class
