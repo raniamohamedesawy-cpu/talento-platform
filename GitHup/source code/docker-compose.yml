@@ -1,0 +1,162 @@
+version: '3.9'
+
+services:
+  # ──────────────────────────────────────────────────────────────
+  # MySQL Database
+  # ──────────────────────────────────────────────────────────────
+  db:
+    image: mysql:8.1
+    container_name: talento-db
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      MYSQL_DATABASE: talento
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+    ports:
+      - "3307:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - talento-network
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --sql-mode=STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION
+
+  # ──────────────────────────────────────────────────────────────
+  # Redis (JWT revocation list)
+  # ──────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: talento-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - talento-network
+
+  # ──────────────────────────────────────────────────────────────
+  # Spring Boot Backend
+  # ──────────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: Talento/talento-backend-fixed
+      dockerfile: Dockerfile
+    container_name: talento-backend
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS}
+      JWT_REFRESH_EXPIRATION_MS: ${JWT_REFRESH_EXPIRATION_MS}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-120}
+      SSL_ENABLED: ${SSL_ENABLED:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      AUDIT_LOGGING: ${AUDIT_LOGGING:-true}
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    networks:
+      - talento-network
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 1G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+
+  # ──────────────────────────────────────────────────────────────
+  # React + Nginx Frontend
+  # ──────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: Talento/talento-frontend-fixed
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-}
+    container_name: talento-frontend
+    env_file: .env
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "5174:80"
+    restart: unless-stopped
+    networks:
+      - talento-network
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+
+  # ──────────────────────────────────────────────────────────────
+  # Optional: E2E Testing Container
+  # ──────────────────────────────────────────────────────────────
+  e2e-tests:
+    build:
+      context: Talento/talento-backend-fixed
+      dockerfile: Dockerfile
+    container_name: talento-e2e-tests
+    env_file: .env
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      BASE_URL: http://backend:8080
+      EMAIL: test_e2e_1@example.com
+      PASSWORD: TestE2EPassword123!@#
+      NAME: E2E Test User
+    volumes:
+      - ./Talento/talento-backend-fixed/e2e-test.sh:/e2e-test.sh:ro
+    entrypoint: ["sh", "-lc", "chmod +x /e2e-test.sh && /e2e-test.sh"]
+    networks:
+      - talento-network
+    profiles:
+      - dev
+
+volumes:
+  db_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  talento-network:
+    driver: bridge

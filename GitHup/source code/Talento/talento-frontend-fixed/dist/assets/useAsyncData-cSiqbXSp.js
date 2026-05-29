@@ -1,0 +1,1 @@
+import{Q as t}from"./index-W9lHGz3i.js";function c(e=800){const[s,r]=t.useState(!0),[o,n]=t.useState(null);return t.useEffect(()=>{r(!0);const u=setTimeout(()=>{r(!1)},e);return()=>clearTimeout(u)},[e]),{loading:s,error:o}}export{c as u};
